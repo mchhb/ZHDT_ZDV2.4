@@ -28,6 +28,7 @@
 #include "w5500.h"
 #include "socket.h"
 #include "dhcp.h"
+//#include "delay.h"
 #include "w5500_config.h"
 /* USER CODE END Includes */
 
@@ -150,7 +151,7 @@ int main(void)
 	sysinit(txsize, rxsize); 
 	printf("W5500 Init Complete!\r\n");
 //	set_w5500_ip();
-	setkeepalive(0);
+	//setkeepalive(0);
 	if (HAL_ADC_Start_DMA(&hadc1, (uint32_t *)ADC_DATA, ADC_CONVERTED_DATA_BUFFER_SIZE) != HAL_OK)
 	{
 		Error_Handler();
@@ -172,12 +173,19 @@ int main(void)
 		w5500_check();	
 		if(dhcp_ok != 1)
 		{
+		//	HAL_Delay(1000);
 			auto_dhcp();
+		//	set_w5500_ip();
+			HAL_Delay(1000);
 		}
 		if(dhcp_ok == 1)
 		{
 			
 			do_tcp_client();
+			/*
+				 头							id							数据长度（俩个字节）							序号（一个字节）								数据
+			0xff	0xff			四个字节					实际发送数据长度									验证丢包累积+									  xx  xx  yy yy xx xx yy yy  xx xx yy  yy
+			*/
 			if((socket_flag == 0)&&(u8len - 9 >= 1200))//&&(sev_time_ok == 1))
 			{
 					sev_time_ok = 0;
@@ -195,7 +203,8 @@ int main(void)
 					Cache_buffer[5] = id_name[3];
 					Cache_buffer[6] = (u8len-8) >> 8;
 					Cache_buffer[7] = (u8len-8) & 0x00ff;	
-					Cache_buffer[8] = ++sev_crc;
+
+				Cache_buffer[8] = ++sev_crc;
 					send(0,Cache_buffer,u8len);
 					//printf("Total len = %d\r\n",u8len);
 					u8len = 9;
@@ -208,6 +217,12 @@ int main(void)
 				memcpy(&Cache_buffer[u8len],w5500_buffer,sevbuffer_len*2);
 				u8len += sevbuffer_len*2;
 			}
+//			if(cumulative_add%2000 == 0)
+//			{
+//				LED0_ON;
+//				LED1_OFF;
+//			}
+		}
 			if(w5500_connect_error > 10000)
 			{
 //				dhcp_ok = 0;
@@ -227,12 +242,6 @@ int main(void)
 				software();
 			}
 			
-//			if(cumulative_add%2000 == 0)
-//			{
-//				LED0_ON;
-//				LED1_OFF;
-//			}
-		}
 	}
   /* USER CODE END 3 */
 }

@@ -17,19 +17,20 @@ uint8_t sev_crc = 0;
 uint8_t dhcp_ok = 0;
 CONFIG_MSG  ConfigMsg, RecvMsg;
 unsigned char id_name[4];
-uint8_t  BD_TG_server_ip[4] = {172,16,40,39}; //{172,16,40,144};       //BD_TG·şÎñÆ÷IPµØÖ·
-//uint8_t  BD_TG_server_ip[4] = {222,32,108,88};//22.32.108.88
+//uint8_t  BD_TG_server_ip[4] = {172,16,40,39}; //{172,16,40,144};       //BD_TG·şÎñÆ÷IPµØÖ·
+uint8_t  BD_TG_server_ip[4] = {222,32,108,88};//22.32.108.88
 //uint8_t  BD_TG_server_ip[4] = {10,10,10,10};
 //uint16_t BD_TG_server_port  = 8080;//8888; 
-uint16_t BD_TG_server_port  = 61613;
+//uint16_t BD_TG_server_port  = 61619;
+uint16_t BD_TG_server_port  = 61619;
 //uint8_t  BD_TG_server_ip[4] = {172,16,40,144}; //{172,16,40,144};       //BD_TG·şÎñÆ÷IPµØÖ·
 //uint16_t BD_TG_server_port  = 8888;//8888; 
-uint8_t ip_from = IP_FROM_DHCP;
+uint8_t ip_from = IP_FROM_DEFINE;
 uint8_t mac[6];
 uint8_t test_ip[4]={0};
-uint8_t local_ip[4]={172,16,40,141};								 /*¶¨ÒåW5500Ä¬ÈÏIPµØÖ·*/
+uint8_t local_ip[4]={192,168,8,141};								 /*¶¨ÒåW5500Ä¬ÈÏIPµØÖ·*/
 uint8_t subnet[4]={255,255,255,0};									 /*¶¨ÒåW5500Ä¬ÈÏ×ÓÍøÑÚÂë*/
-uint8_t gateway[4]={172,16,40,1};										 /*¶¨ÒåW5500Ä¬ÈÏÍø¹Ø*/
+uint8_t gateway[4]={192,168,8,1};										 /*¶¨ÒåW5500Ä¬ÈÏÍø¹Ø*/
 uint8_t dns_server[4]={103,44,168,6};								 /*¶¨ÒåW5500Ä¬ÈÏDNS*/
 uint16_t local_port = 6000;	                    		 /*¶¨Òå±¾µØ¶Ë¿Ú*/
 //uint8_t dns_server[4]={5,5,5,5};
@@ -41,7 +42,7 @@ static uint16_t SSIZE[MAX_SOCK_NUM]; /**< Max Tx buffer size by each channel */
 static uint16_t RSIZE[MAX_SOCK_NUM]; /**< Max Rx buffer size by each channel */
 uint8_t txsize[MAX_SOCK_NUM] = {16};		// Ñ¡Ôñ8¸öSocketÃ¿¸öSocket·¢ËÍ»º´æµÄ´óĞ¡£¬ÔÚw5500.cµÄvoid sysinit()ÓĞÉèÖÃ¹ı³Ì
 uint8_t rxsize[MAX_SOCK_NUM] = {16};		// Ñ¡Ôñ8¸öSocketÃ¿¸öSocket½ÓÊÕ»º´æµÄ´óĞ¡£¬ÔÚw5500.cµÄvoid sysinit()ÓĞÉèÖÃ¹ı³Ì
-uint32_t w5500_connect_error = 0;
+uint64_t w5500_connect_error = 0;
 uint32_t sev_data = 0;
 uint32_t sev_text = 0;
 uint8_t getISR(uint8_t s)
@@ -100,7 +101,37 @@ uint8_t IINCHIP_READ(uint32_t addrbsb)
   // IINCHIP_ISR_ENABLE();                         // Interrupt Service Routine Enable
    return data;    
 }
+void set_w5500_ip(void)
+{	
+	/*Ê¹ÓÃDHCP»ñÈ¡IP²ÎÊı£¬Ğèµ÷ÓÃDHCP×Óº¯Êı*/		
+	if(ip_from==IP_FROM_DEFINE)	
+	{
+		printf(" Ê¹ÓÃ¶¨ÒåµÄIPĞÅÏ¢ÅäÖÃW5500:\r\n");
+		//memcpy(ConfigMsg.mac, mac, 6);
+		local_ip[3] = id_name[3];
+		memcpy(ConfigMsg.lip,local_ip,4);
+		memcpy(ConfigMsg.sub,subnet,4);
+		memcpy(ConfigMsg.gw,gateway,4);
+		memcpy(ConfigMsg.dns,dns_server,4);
+	}
+		
+	/*ÒÔÏÂÅäÖÃĞÅÏ¢£¬¸ù¾İĞèÒªÑ¡ÓÃ*/	
+	ConfigMsg.sw_ver[0]=FW_VER_HIGH;
+	ConfigMsg.sw_ver[1]=FW_VER_LOW;	
 
+	/*½«IPÅäÖÃĞÅÏ¢Ğ´ÈëW5500ÏàÓ¦¼Ä´æÆ÷*/	
+	setSUBR(ConfigMsg.sub);
+	setGAR(ConfigMsg.gw);
+	setSIPR(ConfigMsg.lip);
+	
+	getSIPR (local_ip);			
+	printf(" W5500 IPµØÖ·   : %d.%d.%d.%d\r\n", local_ip[0],local_ip[1],local_ip[2],local_ip[3]);
+	getSUBR(subnet);
+	printf(" W5500 ×ÓÍøÑÚÂë : %d.%d.%d.%d\r\n", subnet[0],subnet[1],subnet[2],subnet[3]);
+	getGAR(gateway);
+	printf(" W5500 Íø¹Ø     : %d.%d.%d.%d\r\n", gateway[0],gateway[1],gateway[2],gateway[3]);
+	dhcp_ok = 1;
+}
 uint16_t wiz_write_buf(uint32_t addrbsb,uint8_t* buf,uint16_t len)
 {
    uint16_t idx = 0;
@@ -556,9 +587,9 @@ void w5500_check(void)
 void Reset_W5500(void)
 {
   WIZ_RESET_LOW;
-  HAL_Delay(1);  
+  HAL_Delay(500);  
   WIZ_RESET_HIGH;
-  HAL_Delay(2);
+  HAL_Delay(500);
 }
 uint8_t SPI2_SendByte(uint8_t SPI2_txbuffer)
 {
@@ -593,52 +624,18 @@ void set_w5500_mac(void)
 *@param		ÎŞ
 *@return	ÎŞ
 */
-void set_w5500_ip(void)
-{	
-	/*Ê¹ÓÃDHCP»ñÈ¡IP²ÎÊı£¬Ğèµ÷ÓÃDHCP×Óº¯Êı*/		
-	if(ip_from==IP_FROM_DHCP)								
-	{
-		/*¸´ÖÆDHCP»ñÈ¡µÄÅäÖÃĞÅÏ¢µ½ÅäÖÃ½á¹¹Ìå*/
-		if(dhcp_ok==1)
-		{
-			printf(" IP from DHCP\r\n");		 
-			memcpy(ConfigMsg.sub,DHCP_GET.sub, 4);
-			memcpy(ConfigMsg.gw,DHCP_GET.gw, 4);
-			memcpy(ConfigMsg.dns,DHCP_GET.dns,4);
-			memcpy(ConfigMsg.lip,DHCP_GET.lip, 4);
-		}
-		else
-		{
-			printf(" DHCP×Ó³ÌĞòÎ´ÔËĞĞ,»òÕß²»³É¹¦\r\n");
-			printf(" Ê¹ÓÃ¶¨ÒåµÄIPĞÅÏ¢ÅäÖÃW5500\r\n");
-		}
-	}
-		
-	/*ÒÔÏÂÅäÖÃĞÅÏ¢£¬¸ù¾İĞèÒªÑ¡ÓÃ*/	
-	ConfigMsg.sw_ver[0]=FW_VER_HIGH;
-	ConfigMsg.sw_ver[1]=FW_VER_LOW;	
-
-	/*½«IPÅäÖÃĞÅÏ¢Ğ´ÈëW5500ÏàÓ¦¼Ä´æÆ÷*/	
-	setSUBR(ConfigMsg.sub);
-	setGAR(ConfigMsg.gw);
-	setSIPR(ConfigMsg.lip);
-	
-	getSIPR (local_ip);			
-	printf(" W5500 IPµØÖ·   : %d.%d.%d.%d\r\n", local_ip[0],local_ip[1],local_ip[2],local_ip[3]);
-	getSUBR(subnet);
-	printf(" W5500 ×ÓÍøÑÚÂë : %d.%d.%d.%d\r\n", subnet[0],subnet[1],subnet[2],subnet[3]);
-	getGAR(gateway);
-	printf(" W5500 Íø¹Ø     : %d.%d.%d.%d\r\n", gateway[0],gateway[1],gateway[2],gateway[3]);
-}
 void do_tcp_client(void)
 {	
 			switch(getSn_SR(0))										// »ñÈ¡socket0µÄ×´Ì¬
 			{
 				case SOCK_INIT:											// Socket´¦ÓÚ³õÊ¼»¯Íê³É(´ò¿ª)×´Ì¬
 					//	listen(0);											//    ¼àÌı¸Õ¸Õ´ò¿ªµÄ±¾µØ¶Ë¿Ú£¬µÈ´ı¿Í»§¶ËÁ¬½Ó
-					socket_flag = 1;
-					printf("W5500 To Connected. ip:%d.%d.%d.%d,port:%d\r\n",BD_TG_server_ip[0],BD_TG_server_ip[1],BD_TG_server_ip[2],BD_TG_server_ip[3],BD_TG_server_port);
-						
+					//socket_flag = 1;
+					if(socket_flag == 1)
+					{
+						socket_flag++;
+						printf("W5500 To Connected. ip:%d.%d.%d.%d,port:%d\r\n",BD_TG_server_ip[0],BD_TG_server_ip[1],BD_TG_server_ip[2],BD_TG_server_ip[3],BD_TG_server_port);
+					}	
 					connect(0,BD_TG_server_ip,BD_TG_server_port);
 					HAL_Delay(1000);
 				break;
@@ -647,7 +644,7 @@ void do_tcp_client(void)
 						if(getSn_IR(0) & Sn_IR_CON)			
 						{
 							setSn_IR(0, Sn_IR_CON);				// Sn_IRµÄCONÎ»ÖÃ1£¬Í¨ÖªW5500Á¬½ÓÒÑ½¨Á¢
-							if(socket_flag)
+							if(socket_flag == 2)
 							{
 								socket_flag = 0;
 								reset_cmd = 0;
@@ -661,7 +658,7 @@ void do_tcp_client(void)
 						if(revbuffer_len>0)
 						{
 							recv(0,w5500_buffer,revbuffer_len);						// W5500½ÓÊÕÀ´×Ô¿Í»§¶ËµÄÊı¾İ£¬²¢Í¨¹ıSPI·¢ËÍ¸øMCU
-							printf("%d\r\n",revbuffer_len);			// ´®¿Ú´òÓ¡½ÓÊÕµ½µÄÊı¾İ
+							printf("½ÓÊÕµ½µÄÊı¾İ£º%d\r\n",revbuffer_len);			// ´®¿Ú´òÓ¡½ÓÊÕµ½µÄÊı¾İ
 							send(0,w5500_buffer,revbuffer_len);						// ½ÓÊÕµ½Êı¾İºóÔÙ»Ø¸ø¿Í»§¶Ë£¬Íê³ÉÊı¾İ»Ø»
 						}
 						// W5500´Ó´®¿Ú·¢Êı¾İ¸ø¿Í»§¶Ë³ÌĞò£¬Êı¾İĞèÒÔ»Ø³µ½áÊø

@@ -10,7 +10,7 @@ extern uint8_t socket_flag;
 extern uint32_t sevbuffer_len;
 extern uint8_t w5500_buffer[12];
 extern uint8_t Cache_buffer[2048];
-extern uint64_t w5500_connect_error;
+extern uint32_t w5500_connect_error;
 extern uint16_t u8len;
 extern uint32_t sev_data;
 extern uint32_t cumulative_add;
